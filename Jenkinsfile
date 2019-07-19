@@ -1,0 +1,41 @@
+
+node {
+   def sonarUrl = 'sonar.host.url=http://x.x.x.x:9000'
+   def mvn = tool (name: 'maven3', type: 'maven') + '/bin/mvn'
+   stage('SCM Checkout'){
+    // Clone repo
+	git branch: 'master',
+	credentialsId: 'github',
+	url: 'https://github.cms.gov/MRMA/sonarqube_java_test_pipeline.git'
+
+   }
+
+   stage('Sonar Publish'){
+	   withCredentials([string(credentialsId: 'sonarqube', variable: 'sonarToken')]) {
+        def sonarToken = "sonar.login=${sonarToken}"
+        sh "${mvn} sonar:sonar -D${sonarUrl}  -D${sonarToken}"
+	 }
+
+   }
+
+
+   stage('Mvn Package'){
+	   // Build using maven
+
+	   sh "${mvn} clean package deploy"
+   }
+
+   stage('deploy-dev'){
+       def tomcatDevIp = 'x.x.x.x'
+	   def tomcatHome = '/opt/tomcat8/'
+	   def webApps = tomcatHome+'webapps/'
+	   def tomcatStart = "${tomcatHome}bin/startup.sh"
+	   def tomcatStop = "${tomcatHome}bin/shutdown.sh"
+
+	   sshagent (credentials: ['tomcat-dev']) {
+	      sh "scp -o StrictHostKeyChecking=no target/myweb*.war ec2-user@${tomcatDevIp}:${webApps}myweb.war"
+          sh "ssh ec2-user@${tomcatDevIp} ${tomcatStop}"
+		  sh "ssh ec2-user@${tomcatDevIp} ${tomcatStart}"
+       }
+   }
+}

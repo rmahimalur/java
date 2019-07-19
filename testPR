@@ -1,0 +1,13 @@
+node{
+   stage('SCM Checkout'){
+     checkout([$class: 'GitSCM', branches: [[name: '*/develop']], userRemoteConfigs: [[credentialsId: 'Jenkins-Git-Private-Repo-ID-PW', url: 'https://github.cms.gov/MRMA/sonarqube_java_test_pipeline.git']]])
+   }
+def PULL_REQUEST = env.CHANGE_ID
+
+   stage('SonarQube Analysis') {
+        sh "PR=${PULL_REQUEST}"
+        sh "echo CHANGE_ID is ${env.CHANGE_ID}"
+        sh "echo PULL_REQUEST is ${env.PULL_REQUEST}"
+
+    }
+}

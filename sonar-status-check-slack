@@ -1,0 +1,51 @@
+node{
+   stage('SCM Checkout'){
+     checkout([$class: 'GitSCM', branches: [[name: '*/develop']], userRemoteConfigs: [[credentialsId: 'Jenkins-Git-Private-Repo-ID-PW', url: 'https://github.cms.gov/MRMA/sonarqube_java_test_pipeline.git']]])
+   }
+   stage('Compile-Package'){
+      def mvn_version = 'WNMG-Maven'
+      withEnv( ["PATH+MAVEN=${tool mvn_version}/bin"] ) {
+      sh "mvn clean package"
+    }
+   }
+
+   stage('SonarQube Analysis') {
+        def mvn_version = 'WNMG-Maven'
+        withEnv( ["PATH+MAVEN=${tool mvn_version}/bin"] ) {
+        withSonarQubeEnv('WNMG-SonarQube') {
+        sh "mvn sonar:sonar \
+            -Dsonar.projectKey=sonarqube_java_test_pipeline \
+            -Dsonar.host.url=http://jenkins-sonarqube-1618716710.us-east-1.elb.amazonaws.com:9000 \
+            -Dsonar.login=5757baf877afa01cceac94311ba10f22c4499845"
+         }
+       }
+    }
+
+    stage("Quality Gate Statuc Check"){
+          timeout(time: 1, unit: 'HOURS') {
+              def qg = waitForQualityGate()
+               if (qg.status != 'OK') {
+                  error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                  }
+#              if (qg.status != 'OK') {
+#                   slackSend baseUrl: 'https://hooks.slack.com/services/',
+#                   channel: '#jenkins-pipeline-demo',
+#                   color: 'danger',
+#                   message: 'SonarQube Analysis Failed',
+#                   teamDomain: 'javahomecloud',
+#                   tokenCredentialId: 'slack-demo'
+#                  error "Pipeline aborted due to quality gate failure: ${qg.status}"
+#              }
+          }
+      }
+
+#   stage('Slack Notification'){
+#       slackSend baseUrl: 'https://hooks.slack.com/services/',
+#       channel: '#jenkins-pipeline-demo',
+#       color: 'good',
+#       message: 'Welcome to Jenkins, Slack!',
+#       teamDomain: 'javahomecloud',
+#       tokenCredentialId: 'slack-demo'
+#   }
+
+}

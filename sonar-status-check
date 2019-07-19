@@ -1,0 +1,33 @@
+node{
+   stage('SCM Checkout'){
+     checkout([$class: 'GitSCM', branches: [[name: '*/develop']], userRemoteConfigs: [[credentialsId: 'Jenkins-Git-Private-Repo-ID-PW', url: 'https://github.cms.gov/MRMA/sonarqube_java_test_pipeline.git']]])
+   }
+   stage('Compile-Package'){
+      def mvn_version = 'WNMG-Maven'
+      withEnv( ["PATH+MAVEN=${tool mvn_version}/bin"] ) {
+      sh "mvn clean package"
+    }
+   }
+   stage('SonarQube Analysis') {
+        def mvn_version = 'WNMG-Maven'
+        withEnv( ["PATH+MAVEN=${tool mvn_version}/bin"] ) {
+        withSonarQubeEnv('WNMG-SonarQube') {
+          sh "mvn sonar:sonar \
+              -Dsonar.projectKey=sonarqube_java_test_pipeline_PR_Check \
+              -Dsonar.host.url=http://jenkins-sonarqube-1618716710.us-east-1.elb.amazonaws.com:9000 \
+              -Dsonar.login=3f4b14c5f458d7a08b9a4ef6f7cfc7d4a4d2c629 \
+              -Dsonar.pullrequest.key=null \
+              -Dsonar.pullrequest.branch=develop \
+              -Dsonar.pullrequest.base=master"
+         }
+       }
+    }
+    stage("Quality Gate Statuc Check"){
+          timeout(time: 1, unit: 'HOURS') {
+              def qg = waitForQualityGate()
+               if (qg.status != 'OK') {
+                  error "Pipeline aborted due to quality gate failure: ${qg.status}"
+             }
+          }
+      }
+}

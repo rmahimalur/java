@@ -1,0 +1,34 @@
+node{
+   stage('SCM Checkout'){
+     checkout([$class: 'GitSCM', branches: [[name: '*/develop']], userRemoteConfigs: [[credentialsId: 'Jenkins-Git-Private-Repo-ID-PW', url: 'https://github.cms.gov/MRMA/sonarqube_java_test_pipeline.git']]])
+   }
+   stage('Compile-Package'){
+      def mvn_version = 'WNMG-Maven'
+      withEnv( ["PATH+MAVEN=${tool mvn_version}/bin"] ) {
+      sh "mvn clean package"
+    }
+   }
+
+   
+   stage('SonarQube Analysis') {
+        def mvn_version = 'WNMG-Maven'
+        prNo = (env.BRANCH_NAME=~/^PR-(\d+)$/)[0][1]
+        echo "PR-No: ${prNo}"
+        withCredentials([[$class: 'StringBinding', credentialsId: 'SonarQube_Github_PRChecks', variable: 'SonarQube_Github_PRChecks']]) {
+        githubToken=env.SonarQube_Github_PRChecks
+        withEnv( ["PATH+MAVEN=${tool mvn_version}/bin"] ) {
+        withSonarQubeEnv('WNMG-SonarQube') {
+          sh "mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar " +
+             "-Dsonar.pullrequest.key=${prNo} " +
+             "-Dsonar.pullrequest.branch=develop " +
+             "-Dsonar.pullrequest.base=master " +
+             "-Dsonar.analysis.mode=preview " +
+             "-Dsonar.github.pullRequest=${prNo} " +
+             "-Dsonar.github.oauth=${githubToken} " +
+             "-Dsonar.github.repository=MRMA/sonarqube_java_test_pipeline " +
+             "-Dsonar.github.endpoint=https://github.cms.gov/api/v3 sonar:sonar"
+         }
+       }
+    }
+   }
+}
