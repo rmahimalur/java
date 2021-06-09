@@ -1,1 +1,2 @@
-git_token = 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
+# testing-token-with-no-access
+git_token =  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
