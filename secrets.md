@@ -1,3 +1,3 @@
 # Dummmy AWS token
-Access Key ID: AKIAZXH6YN2W72WQETVU
-Secret Access Key: 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
+Access Key ID: AKIAZXH6YN2W72NWJ2WN
+Secret Access Key: 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
